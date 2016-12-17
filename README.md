@@ -6,6 +6,11 @@ Note #1: These tools are for educational usage only as the usage is against the 
 
 Note #2: I didn't develop the macspoofer or devmanview so these obviously don't fall under the MIT license, but I still am not responsible for any damage these might have caused, nor are the respective developers of these tools.
 
+## REQUIREMENTS
+
+- Admin rights
+- a SSH server that can be reached from inside the Flixbus WLAN
+
 ## SETUP
 
 1. Install Cygwin and add it to your path
