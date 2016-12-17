@@ -28,7 +28,9 @@ Note #2: I didn't develop the macspoofer or devmanview so these obviously don't 
 
    ![Admin Mode](img/admin_mode.png)
 
-8. Enjoy...
+8. Setup your global proxy connection or use something like Proxy Helper (for Chrome) to manage your proxy connection. (This is required to browse e.g. youtube.com)
+
+9. Enjoy...
 
 
 
