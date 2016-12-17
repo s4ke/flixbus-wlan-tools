@@ -1,0 +1,27 @@
+(20040826) 1.71d
+
++ Added extra info (Real MAC, IPs, Speed, ...)
++ Added log clear/save functions
++ Added MAC address history
++ Added command line mode
++ More friendly error messages
+- Fixed a bug that could lead to "Cannot remove address" address error
+
+(200403xx) 1.53d
+
++ Added IP Extra features
++ Added semi-automatic updates check
+
+(20040222) 1.31d
+
++ OID lookup while you type
++ OS version checking to ensure proper operation
+
+(20040122) 1.23d
+
+- minor fix for Windows 2003 platform
+- fixed problem on some Windows XP boxes that lead to "Must run with admin privileges" message
++ added ability to filter out virtual interfaces
++ added shortcut to check for last version
++ updated OID database
++ added debug messages to help individuate problems
