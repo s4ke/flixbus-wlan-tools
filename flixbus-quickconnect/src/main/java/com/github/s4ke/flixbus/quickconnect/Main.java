@@ -24,8 +24,14 @@
 package com.github.s4ke.flixbus.quickconnect;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import com.gargoylesoftware.htmlunit.WebClient;
+import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
 
 /**
@@ -33,16 +39,136 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  */
 public class Main {
 
-	public static void main(String[] args) throws IOException, InterruptedException {
-		System.out.println("Logging in to Flixbus WLAN...");
+	private static final boolean MAC_FIX_PRESENT = false;
+
+	private static final Logger LOGGER = Logger.getLogger( Main.class.getName() );
+
+	public static void main(String[] args) throws InterruptedException {
+		System.getProperties().put( "org.apache.commons.logging.simplelog.defaultlog", "fatal" );
+		while ( true ) {
+			//establish connection
+			while ( true ) {
+				LOGGER.info( "Establishing connection..." );
+				if ( tryLogin() ) {
+					LOGGER.info( "Login to FlixBus WLAN successful..." );
+					break;
+				}
+				else {
+					//FIXME: remove the break as soon as mac changing is added.
+					if ( MAC_FIX_PRESENT ) {
+						LOGGER.info( "Trying again soon(ish)..." );
+						Thread.sleep( 10000 );
+					}
+					else {
+						break;
+					}
+					LOGGER.info( "Login to FlixBus WLAN failed..." );
+				}
+			}
+			//check if the connection is alive
+			while ( true ) {
+				LOGGER.info( "Checking connection..." );
+				if ( isConnected() ) {
+					LOGGER.info( "Connection is okay..." );
+					//FIXME: remove the break as soon as mac changing is added.
+					if ( MAC_FIX_PRESENT ) {
+						Thread.sleep( 10000 );
+					}
+					else {
+						break;
+					}
+				}
+				else {
+					LOGGER.info( "Lost connection..." );
+					break;
+				}
+			}
+			//TODO: add automatic mac changing
+			if ( !MAC_FIX_PRESENT ) {
+				break;
+			}
+		}
+	}
+
+	public static boolean isConnected() {
+		try (final WebClient webClient = new WebClient()) {
+			HtmlPage page = webClient.getPage( "http://78.47.27.135/flixbus.html" );
+			return page.getElementById( "1" ) != null;
+		}
+		catch (MalformedURLException e) {
+			throw new RuntimeException( e );
+		}
+		catch (IOException e) {
+			LOGGER.log( Level.SEVERE, "IOException in tryLogin...", e );
+			return false;
+		}
+	}
+
+	public static boolean tryLogin() {
+		System.out.println( "Logging in to Flixbus WLAN..." );
 		try (final WebClient webClient = new WebClient()) {
 			final HtmlPage page = webClient.getPage( "https://portal.moovmanage.com/flixbus-albus/connect.php" );
 			HtmlPage page2 = page.getElementById( "aup_agree" ).click();
-			if(page2.getTitleText().trim().equals( "Willkommen im WLAN von FlixBus" )) {
-				Thread.sleep( 10000 );
-				System.out.println("Success!");
+			//FCK Java Generics
+			HtmlPage page3 = (HtmlPage) page2.getElementsByTagName( "input" )
+					.stream()
+					.filter( elem -> elem.getAttribute( "type" ).equals( "submit" ) )
+					.findFirst()
+					.map( wrapExceptionFunction( (CheckedFunction<? super DomElement, HtmlPage>) DomElement::click ) )
+					.orElseThrow( () -> new RuntimeException(
+							"clicking the submit button failed!" ) );
+			if ( page3.getTitleText().trim().equals( "Willkommen im WLAN von FlixBus" ) ) {
+				System.out.println( "Successfully logged in to FlixBus WLAN!" );
+				return true;
 			}
 		}
+		catch (MalformedURLException e) {
+			throw new RuntimeException( e );
+		}
+		catch (IOException e) {
+			LOGGER.log( Level.SEVERE, "IOException in tryLogin...", e );
+			return false;
+		}
+		return false;
+	}
+
+	@FunctionalInterface
+	public interface CheckedFunction<T, R> {
+		R apply(T t) throws Exception;
+	}
+
+	@FunctionalInterface
+	public interface CheckedConsumer<T> {
+		T apply(T t) throws Exception;
+	}
+
+	private static <T> CheckedFunction<? super T, ? super T> toFn(CheckedConsumer<? super T> consumer) {
+		return (t) -> {
+			consumer.apply( t );
+			return t;
+		};
+	}
+
+	private static <T, R> Function<? super T, ? super R> wrapExceptionFunction(CheckedFunction<? super T, R> consumer) {
+		return (t) -> {
+			try {
+				return consumer.apply( t );
+			}
+			catch (Exception e) {
+				throw new RuntimeException( e );
+			}
+		};
+	}
+
+	private static <T> Consumer<? super T> wrapExceptionConsumer(CheckedConsumer<? super T> consumer) {
+		return (t) -> {
+			try {
+				consumer.apply( t );
+			}
+			catch (Exception e) {
+				throw new RuntimeException( e );
+			}
+		};
 	}
 
 }
