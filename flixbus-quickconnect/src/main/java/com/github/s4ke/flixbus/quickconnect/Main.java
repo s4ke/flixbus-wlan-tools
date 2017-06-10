@@ -30,6 +30,7 @@ import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import com.gargoylesoftware.htmlunit.BrowserVersion;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.DomElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
@@ -91,7 +92,7 @@ public class Main {
 	}
 
 	public static boolean isConnected() {
-		try (final WebClient webClient = new WebClient()) {
+		try (final WebClient webClient = new WebClient(BrowserVersion.CHROME)) {
 			HtmlPage page = webClient.getPage( "http://78.47.27.135/flixbus.html" );
 			return page.getElementById( "1" ) != null;
 		}
@@ -104,9 +105,9 @@ public class Main {
 		}
 	}
 
-	public static boolean tryLogin() {
+	public static boolean tryLogin() throws InterruptedException {
 		System.out.println( "Logging in to Flixbus WLAN..." );
-		try (final WebClient webClient = new WebClient()) {
+		try (final WebClient webClient = new WebClient( BrowserVersion.CHROME)) {
 			final HtmlPage page = webClient.getPage( "https://portal.moovmanage.com/flixbus-albus/connect.php" );
 			HtmlPage page2 = page.getElementById( "aup_agree" ).click();
 			//FCK Java Generics
@@ -118,6 +119,7 @@ public class Main {
 					.orElseThrow( () -> new RuntimeException(
 							"clicking the submit button failed!" ) );
 			if ( page3.getTitleText().trim().equals( "Willkommen im WLAN von FlixBus" ) ) {
+				Thread.sleep(3000);
 				System.out.println( "Successfully logged in to FlixBus WLAN!" );
 				return true;
 			}
