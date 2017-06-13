@@ -85,19 +85,24 @@ public class Main {
 					}
 					else {
 						LOGGER.info( "Login to FlixBus WLAN failed..." );
-						if ( failedWLANLogins++ > MAX_WLAN_LOGIN_TRIES ) {
+						if ( ++failedWLANLogins > MAX_WLAN_LOGIN_TRIES ) {
 							LOGGER.info( "Login to FlixBus WLAN failed too many times... getting a new mac address..." );
 							Integer newMacSuffix = -1;
 							while ( newMacSuffix == -1 ) {
-								newMacSuffix = random.nextInt( (MAX_WLAN_LOGIN_TRIES - MINIMUM_MAC_SUFFIX) + 1 ) + MINIMUM_MAC_SUFFIX;
-								if(usedMacSuffixes.contains( newMacSuffix )) {
+								newMacSuffix = random.nextInt( (MAXIMUM_MAC_SUFFIX - MINIMUM_MAC_SUFFIX) + 1 ) + MINIMUM_MAC_SUFFIX;
+								if ( usedMacSuffixes.contains( newMacSuffix ) ) {
 									newMacSuffix = -1;
 									continue;
-								} else {
-									usedMacSuffixes.add(newMacSuffix);
+								}
+								else {
+									usedMacSuffixes.add( newMacSuffix );
 								}
 							}
-							String newMac = "02608c" + String.valueOf( Integer.toHexString( newMacSuffix ) );
+							String newMacSuffixStr = Integer.toHexString( newMacSuffix );
+							while ( newMacSuffixStr.length() < 6 ) {
+								newMacSuffixStr = "0" + newMacSuffixStr;
+							}
+							String newMac = "02608c" + newMacSuffixStr;
 							runCmd( "MacMakeUp.exe set " + WLAN_ADAPTER_ID + " " + newMac );
 							runCmd( "devmanview.exe /disable_enable \"" + WLAN_ADAPTER_NAME + "\"" );
 							runCmd( "devmanview.exe /disable_enable \"" + WLAN_ADAPTER_NAME + "\"" );
