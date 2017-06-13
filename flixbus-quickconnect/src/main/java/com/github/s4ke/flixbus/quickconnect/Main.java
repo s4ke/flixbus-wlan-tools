@@ -23,8 +23,16 @@
  */
 package com.github.s4ke.flixbus.quickconnect;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.MalformedURLException;
+import java.util.HashSet;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -40,37 +48,78 @@ import com.gargoylesoftware.htmlunit.html.HtmlPage;
  */
 public class Main {
 
-	private static final boolean MAC_FIX_PRESENT = false;
+	private static final boolean MAC_FIX_PRESENT = true;
 
+	private static final ExecutorService executorService = Executors.newSingleThreadExecutor();
 	private static final Logger LOGGER = Logger.getLogger( Main.class.getName() );
 
-	public static void main(String[] args) throws InterruptedException {
+	private static int failedWLANLogins = 0;
+	private static final int MAX_WLAN_LOGIN_TRIES = 3;
+
+	private static final String WLAN_ADAPTER_ID = "0001";
+	private static final String WLAN_ADAPTER_NAME = "Intel(R) Wireless-N 7260";
+	private static int currentMac = 0x123456;
+	private static final int MINIMUM_MAC_SUFFIX = 0x000000;
+	private static final int MAXIMUM_MAC_SUFFIX = 0xFFFFFF;
+	private static final Set<Integer> usedMacSuffixes = new HashSet<>();
+	private static final Random random = new Random();
+
+	public static void main(String[] args) throws InterruptedException, IOException, ExecutionException {
 		System.getProperties().put( "org.apache.commons.logging.simplelog.defaultlog", "fatal" );
-		while ( true ) {
+		outer:
+		while ( !Thread.currentThread().isInterrupted() ) {
+			LOGGER.info( "Establishing connection to FlixBus WLAN..." );
+			runCmd( "netsh wlan connect name=FlixBus ssid=FlixBus" );
 			//establish connection
-			while ( true ) {
-				LOGGER.info( "Establishing connection..." );
-				if ( tryLogin() ) {
-					LOGGER.info( "Login to FlixBus WLAN successful..." );
+			while ( !Thread.currentThread().isInterrupted() ) {
+				if ( isConnected() ) {
+					LOGGER.info(
+							"Already authenticated to FlixBus WLAN and connection works \u2714 \n Skipping authentication to FlixBus WLAN" );
 					break;
 				}
 				else {
-					//FIXME: remove the break as soon as mac changing is added.
-					if ( MAC_FIX_PRESENT ) {
-						LOGGER.info( "Trying again soon(ish)..." );
-						Thread.sleep( 10000 );
-					}
-					else {
+					System.out.println( "Logging in to Flixbus WLAN..." );
+					if ( tryLogin() ) {
+						LOGGER.info( "Login to FlixBus WLAN successful \u2714" );
 						break;
 					}
-					LOGGER.info( "Login to FlixBus WLAN failed..." );
+					else {
+						LOGGER.info( "Login to FlixBus WLAN failed..." );
+						if ( failedWLANLogins++ > MAX_WLAN_LOGIN_TRIES ) {
+							LOGGER.info( "Login to FlixBus WLAN failed too many times... getting a new mac address..." );
+							Integer newMacSuffix = -1;
+							while ( newMacSuffix == -1 ) {
+								newMacSuffix = random.nextInt( (MAX_WLAN_LOGIN_TRIES - MINIMUM_MAC_SUFFIX) + 1 ) + MINIMUM_MAC_SUFFIX;
+								if(usedMacSuffixes.contains( newMacSuffix )) {
+									newMacSuffix = -1;
+									continue;
+								} else {
+									usedMacSuffixes.add(newMacSuffix);
+								}
+							}
+							String newMac = "02608c" + String.valueOf( Integer.toHexString( newMacSuffix ) );
+							runCmd( "MacMakeUp.exe set " + WLAN_ADAPTER_ID + " " + newMac );
+							runCmd( "devmanview.exe /disable_enable \"" + WLAN_ADAPTER_NAME + "\"" );
+							runCmd( "devmanview.exe /disable_enable \"" + WLAN_ADAPTER_NAME + "\"" );
+							failedWLANLogins = 0;
+							continue outer;
+						}
+						//FIXME: remove the break as soon as mac changing is added.
+						if ( MAC_FIX_PRESENT ) {
+							LOGGER.info( "Trying again soon(ish)..." );
+							Thread.sleep( 5000 );
+						}
+						else {
+							break;
+						}
+					}
 				}
 			}
 			//check if the connection is alive
-			while ( true ) {
+			while ( !Thread.currentThread().isInterrupted() ) {
 				LOGGER.info( "Checking connection..." );
 				if ( isConnected() ) {
-					LOGGER.info( "Connection is okay..." );
+					LOGGER.info( "Connection is okay \u2714" );
 					//FIXME: remove the break as soon as mac changing is added.
 					if ( MAC_FIX_PRESENT ) {
 						Thread.sleep( 10000 );
@@ -84,31 +133,51 @@ public class Main {
 					break;
 				}
 			}
-			//TODO: add automatic mac changing
-			if ( !MAC_FIX_PRESENT ) {
-				break;
-			}
 		}
 	}
 
+	public static void runCmd(String cmd) throws IOException, ExecutionException, InterruptedException {
+		LOGGER.info( "running cmd: " + cmd );
+
+		final Process p = Runtime.getRuntime().exec( cmd );
+		executorService.submit( () -> {
+			BufferedReader input = new BufferedReader( new InputStreamReader( p.getInputStream() ) );
+			String line = null;
+
+			try {
+				while ( (line = input.readLine()) != null ) {
+					LOGGER.info( line );
+				}
+			}
+			catch (IOException e) {
+				e.printStackTrace();
+			}
+		} ).get();
+	}
+
 	public static boolean isConnected() {
-		try (final WebClient webClient = new WebClient(BrowserVersion.CHROME)) {
+		try (final WebClient webClient = new WebClient( BrowserVersion.CHROME )) {
+			webClient.getOptions().setCssEnabled( false );
+			webClient.getOptions().setUseInsecureSSL( true );
+			webClient.getOptions().setThrowExceptionOnScriptError( false );
 			HtmlPage page = webClient.getPage( "http://78.47.27.135/flixbus.html" );
 			return page.getElementById( "1" ) != null;
 		}
 		catch (MalformedURLException e) {
-			throw new RuntimeException( e );
+			throw new AssertionError( e );
 		}
 		catch (IOException e) {
-			LOGGER.log( Level.SEVERE, "IOException in tryLogin...", e );
+			LOGGER.log( Level.SEVERE, "IOException in isConnected...", e );
 			return false;
 		}
 	}
 
 	public static boolean tryLogin() throws InterruptedException {
-		System.out.println( "Logging in to Flixbus WLAN..." );
-		try (final WebClient webClient = new WebClient( BrowserVersion.CHROME)) {
-			final HtmlPage page = webClient.getPage( "https://portal.moovmanage.com/flixbus-albus/connect.php" );
+		try (final WebClient webClient = new WebClient( BrowserVersion.CHROME )) {
+			webClient.getOptions().setCssEnabled( false );
+			webClient.getOptions().setUseInsecureSSL( true );
+			webClient.getOptions().setThrowExceptionOnScriptError( false );
+			final HtmlPage page = webClient.getPage( "https://go.microsoft.com/fwlink/" );
 			HtmlPage page2 = page.getElementById( "aup_agree" ).click();
 			//FCK Java Generics
 			HtmlPage page3 = (HtmlPage) page2.getElementsByTagName( "input" )
@@ -118,9 +187,7 @@ public class Main {
 					.map( wrapExceptionFunction( (CheckedFunction<? super DomElement, HtmlPage>) DomElement::click ) )
 					.orElseThrow( () -> new RuntimeException(
 							"clicking the submit button failed!" ) );
-			if ( page3.getTitleText().trim().equals( "Willkommen im WLAN von FlixBus" ) ) {
-				Thread.sleep(3000);
-				System.out.println( "Successfully logged in to FlixBus WLAN!" );
+			if ( page3.getUrl().toString().equals( "https://www.flixbus.de/wlan-willkommen" ) ) {
 				return true;
 			}
 		}
