@@ -58,6 +58,8 @@ public class Main {
 
 	private static final String WLAN_ADAPTER_ID = "0001";
 	private static final String WLAN_ADAPTER_NAME = "Intel(R) Wireless-N 7260";
+	private static final String WLAN_SETTINGS_XML = "WLAN-FlixBus.xml";
+	private static final String INTERFACE_NAME = "WLAN";
 	private static int currentMac = 0x123456;
 	private static final int MINIMUM_MAC_SUFFIX = 0x000000;
 	private static final int MAXIMUM_MAC_SUFFIX = 0xFFFFFF;
@@ -69,6 +71,8 @@ public class Main {
 		outer:
 		while ( !Thread.currentThread().isInterrupted() ) {
 			LOGGER.info( "Establishing connection to FlixBus WLAN..." );
+			//add wlan profile
+			runCmd( "netsh wlan add profile filename=\""+ WLAN_SETTINGS_XML +"\" interface=\"" + INTERFACE_NAME + "\"");
 			runCmd( "netsh wlan connect name=FlixBus ssid=FlixBus" );
 			//establish connection
 			while ( !Thread.currentThread().isInterrupted() ) {
