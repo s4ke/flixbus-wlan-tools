@@ -51,16 +51,22 @@ public class ConnectionRunnable implements Runnable {
     private static final boolean MAC_FIX_PRESENT = true;
 
     private static final Logger LOGGER = Logger.getLogger(ConnectionRunnable.class.getName());
+    public static final int MAX_WLAN_LOGIN_TRIES = 5;
+    public static final String MAC_PREFIX = "02608c";
+    public static final String WLAN_ADAPTER_ID = "0001";
+    public static final String WLAN_ADAPTER_NAME = "Intel(R) Wireless-N 7260";
+    public static final String WLAN_SETTINGS_XML = "WLAN-FlixBus.xml";
+    public static final String INTERFACE_NAME = "wlp1s0";
 
     private int failedWLANLogins = 0;
     private final ExecutorService executorService;
 
-    public int maxWlanLoginTries = 5;
-    public String macPrefix = "02608c";
-    public String wlanAdapterId = "0001";
-    public String wlanAdapterName = "Intel(R) Wireless-N 7260";
-    public String wlanSettingsXml = "WLAN-FlixBus.xml";
-    public String interfaceName = "WLAN";
+    public int maxWlanLoginTries = MAX_WLAN_LOGIN_TRIES;
+    public String macPrefix = MAC_PREFIX;
+    public String wlanAdapterId = WLAN_ADAPTER_ID;
+    public String wlanAdapterName = WLAN_ADAPTER_NAME;
+    public String wlanSettingsXml = WLAN_SETTINGS_XML;
+    public String interfaceName = INTERFACE_NAME;
 
     public boolean run = true;
 
@@ -210,10 +216,15 @@ public class ConnectionRunnable implements Runnable {
 
     public static boolean tryLogin() throws InterruptedException {
         try (final WebClient webClient = new WebClient(BrowserVersion.CHROME)) {
+            webClient.getOptions().setRedirectEnabled(true);
             webClient.getOptions().setCssEnabled(false);
             webClient.getOptions().setUseInsecureSSL(true);
             webClient.getOptions().setThrowExceptionOnScriptError(false);
-            final HtmlPage page = webClient.getPage("https://go.microsoft.com/fwlink/");
+            //final HtmlPage page = webClient.getPage("https://go.microsoft.com/fwlink/");
+            //final HtmlPage page = webClient.getPage("http://detectportal.firefox.com");
+            final String loginURL = "http://detectportal.firefox.com";
+            LOGGER.info("using " + loginURL + " to login to Flixbus WiFi");
+            final HtmlPage page = webClient.getPage(loginURL);
             HtmlPage page2 = page.getElementById("aup_agree").click();
             //FCK Java Generics
             HtmlPage page3 = (HtmlPage) page2.getElementsByTagName("input")

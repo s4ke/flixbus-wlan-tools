@@ -33,13 +33,13 @@ for INTERFACE in ${INTERFACES[*]}; do
   $DEBUG && echo "Deactivating $INTERFACE"
   ifconfig $INTERFACE down
 
-  while : ; do
-    NEW_MAC=$(python -c "import random; print(':'.join(['%02X' % random.randrange(0,255) for i in range(0,6)]))")
-    $DEBUG && echo "Trying to set $NEW_MAC to $INTERFACE"
-    ifconfig $INTERFACE hw ether $NEW_MAC > /dev/null 2>&1
-    [[ $? -ne 0 ]] || break
-    $DEBUG && echo "$INTERFACE rejected address $NEW_MAC"
-  done
+  #while : ; do
+  NEW_MAC=$(python -c "import random; print(':'.join(['%02X' % random.randrange(0,255) for i in range(0,6)]))")
+  $DEBUG && echo "Trying to set $NEW_MAC to $INTERFACE"
+  ifconfig $INTERFACE hw ether $NEW_MAC > /dev/null 2>&1
+  [[ $? -ne 0 ]] || break
+  $DEBUG && echo "$INTERFACE rejected address $NEW_MAC"
+  #done
 
    $DEBUG && echo "Reactivating $INTERFACE"
    ifconfig $INTERFACE up

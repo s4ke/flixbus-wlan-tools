@@ -51,7 +51,7 @@
                     </descriptorRefs>
                     <archive>
                         <manifest>
-                            <mainClass>com.github.s4ke.flixbus.quickconnect.FlixBusQuickConnect</mainClass>
+                            <mainClass>com.github.s4ke.flixbus.quickconnect.FlixBusQuickConnect2</mainClass>
                         </manifest>
                     </archive>
                 </configuration>
